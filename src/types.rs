@@ -177,10 +177,13 @@ impl Qop {
     /// Returns an error if the value is not a valid qop value.
     pub fn from_parameters(map: &HashMap<UniCase<String>, String>) -> Result<Option<Qop>, Error> {
         if let Some(value) = unraveled_map_value(map, "qop") {
-            match Qop::from_str(&value[..]) {
-                Ok(converted) => Ok(Some(converted)),
-                Err(_) => Err(Error::Header),
+            let qops: Vec<Qop> =
+                value[..].split(",").filter_map(|s| Qop::from_str(s).ok()).collect();
+            if qops.is_empty() {
+                return Err(Error::Header);
             }
+            // TODO: Change Qop usage to use a vec instead of one value.
+            Ok(Some(qops[0].clone()))
         } else {
             Ok(None)
         }

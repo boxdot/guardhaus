@@ -34,3 +34,5 @@ pub mod digest;
 mod parsing;
 #[warn(missing_docs)]
 pub mod types;
+#[warn(missing_docs)]
+pub mod www_authenticate;

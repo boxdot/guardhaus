@@ -20,8 +20,8 @@
 
 //! Utility functions to parse headers.
 
-use hyper::header::parsing::from_comma_delimited;
 use std::collections::HashMap;
+use std::str;
 use unicase::UniCase;
 use url::percent_encoding::percent_decode;
 
@@ -43,13 +43,43 @@ pub fn append_parameter(serialized: &mut String, key: &str, value: &str, quoted:
     }
 }
 
+fn from_comma_delimited(s: &str) -> Vec<&str> {
+    let mut result = Vec::new();
+
+    // split at comma unless it is surrounded by quot marks
+    let mut begin: usize = 0;
+    let mut open_quotation = false;
+    for (pos, c) in s.chars().enumerate() {
+        if c == ',' && !open_quotation {
+            let slice = s[begin..pos].trim();
+            if !slice.is_empty() {
+                result.push(slice);
+            }
+            begin = pos + 1;
+        } else if c == '"' {
+            open_quotation = !open_quotation;
+        }
+    }
+
+    // add the chunk after the last comma
+    if begin < s.len() {
+        let slice = s[begin..].trim();
+        if !slice.is_empty() {
+            result.push(slice);
+        }
+    }
+
+    result
+}
+
 pub fn parse_parameters(s: &str) -> HashMap<UniCase<String>, String> {
-    let bytearr = &[String::from(s).into_bytes()];
-    let parameters: Vec<String> = from_comma_delimited(bytearr)
-        .expect("Could not parse header parameters");
+    let parameters = from_comma_delimited(s);
     let mut param_map: HashMap<UniCase<String>, String> = HashMap::with_capacity(parameters.len());
     for parameter in parameters {
         let parts: Vec<&str> = parameter.splitn(2, '=').collect();
+        if parts.len() < 2 {
+            continue;
+        }
         param_map.insert(UniCase(parts[0].trim().to_owned()),
                          parts[1].trim().trim_matches('"').to_owned());
     }
